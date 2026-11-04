@@ -41,3 +41,20 @@ Split: 80/20, stratified, random_state=42
 | Precision | 0.6572 |
 | Recall | 0.5588 |
 | ROC-AUC | 0.8419 |
+
+
+## Day 2: Model comparison
+
+Reused Day 1 preprocessing configuration. All models used the same 80/20 stratified split with random_state=42.
+
+| Model | Accuracy | Precision | Recall | ROC-AUC |
+| --- | ---: | ---: | ---: | ---: |
+| Decision Tree | 0.7289 | 0.4896 | 0.5053 | 0.6573 |
+| SVM | 0.7913 | 0.6418 | 0.4840 | 0.7905 |
+| Random Forest | 0.7779 | 0.6034 | 0.4759 | 0.8162 |
+
+Decision Tree was selected by highest churn-class recall (0.5053), with ROC-AUC (0.6573) used to break recall ties. If both metrics tie exactly, the first candidate in the listed order is retained.
+
+Saved pipeline: `models/churn_day2.joblib`
+
+This champion is the best of the three Day 2 candidates under the stated selection rule on this hold-out set. It is not necessarily better than the Day 1 baseline.
