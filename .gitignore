@@ -1,6 +1,12 @@
-.venv/
-venv/
 __pycache__/
 *.pyc
+.venv/
+venv/
 .env
+
+# Dataset
 data/*.csv
+
+# Trained models
+models/*.pkl
+models/*.joblib

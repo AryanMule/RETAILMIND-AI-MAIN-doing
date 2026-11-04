@@ -1,0 +1,4 @@
+Model,Best CV Recall,Training CV Recall,Test Accuracy,Test Precision,Test Recall,Test ROC-AUC,Best Parameters
+Decision Tree,0.51438127090301,0.553010033444816,0.7984386089425124,0.6347305389221557,0.5668449197860963,0.8281833682089437,"{'classifier__max_depth': 5, 'classifier__min_samples_leaf': 10, 'classifier__min_samples_split': 2}"
+Random Forest,0.5157190635451505,0.6076923076923076,0.808374733853797,0.6793103448275862,0.5267379679144385,0.8417577307602884,"{'classifier__max_depth': 10, 'classifier__max_features': 'sqrt', 'classifier__min_samples_leaf': 5, 'classifier__n_estimators': 100}"
+SVM,0.51438127090301,0.5188963210702342,0.7970191625266146,0.6466666666666666,0.5187165775401069,0.828703918985249,"{'classifier__estimator__C': 0.1, 'classifier__estimator__gamma': 'scale', 'classifier__estimator__kernel': 'linear'}"
