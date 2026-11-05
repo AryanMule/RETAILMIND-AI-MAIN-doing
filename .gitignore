@@ -10,3 +10,16 @@ data/*.csv
 # Trained models
 models/*.pkl
 models/*.joblib
+
+.venv/
+venv/
+__pycache__/
+*.pyc
+.env
+
+data/*.csv
+
+models/*.joblib
+models/*.pkl
+
+*.png

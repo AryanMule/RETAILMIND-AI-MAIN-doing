@@ -510,6 +510,114 @@ models/learning_curve.png
 ```
 
 ---
+## Day 4 – Feature Engineering and Ensemble Learning
+
+## 1. Feature Engineering
+
+Implemented a reusable Scikit-learn transformer named `CustomerFeatureEngineer`.
+
+Six new features were created:
+
+| Feature | Description |
+|---|---|
+| tenure_group | Groups customers by tenure |
+| avg_monthly_charge | Average historical monthly charge |
+| num_services | Number of subscribed services |
+| is_month_to_month | Identifies monthly contracts |
+| has_support_service | Identifies support/security subscriptions |
+| has_online_service | Identifies internet subscribers |
+
+The original dataset contained 19 features. After feature engineering, it contained 25 features.
+
+## 2. Feature Selection
+
+Used Scikit-learn's `SelectKBest` with `f_classif` to select informative features.
+
+| Property | Result |
+|---|---:|
+| Original transformed features | 53 |
+| Selected features | 20 |
+| Feature reduction | 62.26% |
+
+### Performance Comparison
+
+| Metric | Without Selection | With Selection |
+|---|---:|---:|
+| Accuracy | 79.91% | 80.06% |
+| Precision | 65.12% | 65.98% |
+| Recall | 52.41% | 51.34% |
+| ROC-AUC | 84.16% | 83.69% |
+
+### Observation
+
+Feature selection slightly improved accuracy and precision but reduced recall and ROC-AUC.
+
+Since churn detection is the primary objective, all 53 transformed features were retained for ensemble training.
+
+## 3. Ensemble Learning
+
+Implemented and compared two ensemble algorithms:
+
+- Random Forest – Bagging
+- XGBoost – Gradient Boosting
+
+Both models used the same training and testing split, along with the engineered features and preprocessing pipeline.
+
+Class imbalance was addressed using:
+- `class_weight="balanced"` in Random Forest.
+- `scale_pos_weight` in XGBoost.
+
+The calculated XGBoost positive-class weight was approximately 2.77.
+
+### Ensemble Model Comparison
+
+| Metric | Random Forest | XGBoost |
+|---|---:|---:|
+| Accuracy | 75.94% | 75.87% |
+| Precision | 53.18% | 53.06% |
+| Recall | 78.34% | 78.88% |
+| F1 Score | 63.35% | 63.44% |
+| ROC-AUC | 84.14% | 84.42% |
+
+# 4. Day 4 Champion Model
+
+**Selected model: XGBoost**
+
+XGBoost was selected because it achieved the highest recall, F1-score, and ROC-AUC among the two Day 4 ensemble candidates.
+
+### Final Metrics
+
+- Accuracy: 75.87%
+- Precision: 53.06%
+- Recall: 78.88%
+- F1 Score: 63.44%
+- ROC-AUC: 84.42%
+
+The complete trained pipeline was saved as:
+
+`models/churn_v4.joblib`
+
+## 5. Production Model Verification
+
+Loaded the saved model and generated predictions for five customer records.
+
+| Customer | Prediction | Churn Probability |
+|---|---|---:|
+| 1 | No | 2.09% |
+| 2 | Yes | 94.56% |
+| 3 | No | 25.12% |
+| 4 | Yes | 56.77% |
+| 5 | No | 1.63% |
+
+The saved model successfully loaded and generated predictions using the complete preprocessing and feature-engineering pipeline.
+
+## 6. Day 4 Conclusion
+
+Day 4 introduced domain-based feature engineering, feature selection experiments, and ensemble learning.
+
+XGBoost achieved the highest churn recall among the Day 4 ensemble candidates, reaching 78.88%.
+
+The model is saved as a reusable pipeline for subsequent prediction and deployment work.
 
 # Installation and Execution
 
