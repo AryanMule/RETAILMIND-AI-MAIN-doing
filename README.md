@@ -750,9 +750,9 @@ python src/learning_analysis.py
 
 ## Author
 
-**Shubham Patil**
+**Aryan Mule**
 
-GitHub: [Shubh823](https://github.com/Shubh823)
+GitHub: [AryanMule](https://github.com/AryanMule)
 
 ---
 
