@@ -597,7 +597,7 @@ The complete trained pipeline was saved as:
 
 `models/churn_v4.joblib`
 
-## 5. Production Model Verification
+# 5. Production Model Verification
 
 Loaded the saved model and generated predictions for five customer records.
 
@@ -618,6 +618,38 @@ Day 4 introduced domain-based feature engineering, feature selection experiments
 XGBoost achieved the highest churn recall among the Day 4 ensemble candidates, reaching 78.88%.
 
 The model is saved as a reusable pipeline for subsequent prediction and deployment work.
+
+## Day 5 - Neural Networks and Deep Learning
+
+### 1. MNIST Neural Network Demo
+- Loaded the MNIST handwritten digit dataset.
+- Normalized image pixel values.
+- Built a neural network using Keras Sequential API.
+- Used Dense layers with ReLU and Softmax activation.
+- Trained and evaluated the model.
+
+### 2. Customer Churn ANN
+- Reused Day 4 feature engineering.
+- Applied numerical scaling and categorical encoding.
+- Built an ANN using TensorFlow/Keras.
+- Used ReLU hidden layers and Sigmoid output.
+- Used Binary Crossentropy loss and Adam optimizer.
+- Applied Dropout and EarlyStopping.
+- Used class weights to handle class imbalance.
+
+### 3. Model Comparison
+Compared the Day 5 ANN with the Day 4 XGBoost champion using:
+- Accuracy
+- Precision
+- Recall
+- F1 Score
+- ROC-AUC
+
+### 4. Saved Artifacts
+- churn_v5_ann.keras
+- day5_preprocessing.joblib
+- day5_training_history.npz
+- day5_model_comparison.csv
 
 # Installation and Execution
 
@@ -718,9 +750,9 @@ python src/learning_analysis.py
 
 ## Author
 
-**Aryan Mule**
+**Shubham Patil**
 
-GitHub: [AryanMule](https://github.com/AryanMule)
+GitHub: [Shubh823](https://github.com/Shubh823)
 
 ---
 
