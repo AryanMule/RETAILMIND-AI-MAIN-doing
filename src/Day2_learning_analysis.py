@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 from sklearn.model_selection import learning_curve, StratifiedKFold
 
-from preprocessing import load_dataset, split_dataset
+from src.Day3_preprocessing import load_dataset, split_dataset
 
 
 # 1. Project paths
