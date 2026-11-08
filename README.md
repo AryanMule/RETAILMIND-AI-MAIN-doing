@@ -2,7 +2,7 @@
 
 An end-to-end machine learning project that predicts customer churn using customer demographics, account information, subscribed services, and billing details.
 
-The project follows a structured machine learning workflow covering exploratory data analysis, preprocessing, baseline training, model comparison, hyperparameter tuning, cross-validation, learning-curve analysis, feature engineering, feature selection, ensemble learning, and production model verification.
+The project follows a structured machine learning workflow covering exploratory data analysis, preprocessing, baseline training, model comparison, hyperparameter tuning, cross-validation, learning-curve analysis, feature engineering, feature selection, ensemble learning, production model verification, and neural-network experimentation.
 
 ---
 
@@ -17,7 +17,8 @@ The project follows a structured machine learning workflow covering exploratory 
 - Create domain-based customer features.
 - Evaluate feature selection using SelectKBest.
 - Handle class imbalance during ensemble training.
-- Save and reload complete trained pipelines for future predictions.
+- Build and evaluate artificial neural networks with TensorFlow and Keras.
+- Save and reload trained pipelines, preprocessing objects, and neural-network models.
 
 ---
 
@@ -30,6 +31,7 @@ The project follows a structured machine learning workflow covering exploratory 
 | NumPy | Numerical operations |
 | Scikit-learn | Preprocessing, model training, selection, tuning, and evaluation |
 | XGBoost | Gradient-boosted ensemble model |
+| TensorFlow and Keras | Neural-network development and training |
 | Matplotlib | Learning-curve visualization |
 | Joblib | Model serialization |
 | Git and GitHub | Version control |
@@ -93,7 +95,10 @@ RETAILMIND-AI-MAIN-doing/
 |   |-- Day4_feature_engineering.py
 |   |-- Day4_feature_selection.py
 |   |-- Day4_train_ensembles.py
-|   `-- Day4_test_production_model.py
+|   |-- Day4_test_production_model.py
+|   |-- Day5_mnist_demo.py
+|   |-- Day5_train_ann.py
+|   `-- Day5_compare_models.py
 |
 |-- models/
 |   |-- churn_pipeline.joblib
@@ -102,6 +107,11 @@ RETAILMIND-AI-MAIN-doing/
 |   |-- churn_v4.joblib
 |   |-- day2_model_comparison.csv
 |   |-- day3_tuning_results.csv
+|   |-- day4_model_comparison.csv
+|   |-- churn_v5_ann.keras
+|   |-- day5_preprocessing.joblib
+|   |-- day5_training_history.npz
+|   |-- day5_model_comparison.csv
 |   `-- learning_curve.png
 |
 |-- README.md
@@ -587,6 +597,130 @@ XGBoost achieved 78.88% churn recall, a substantial improvement over the earlier
 
 ---
 
+# Day 5 - Neural Networks and Deep Learning
+
+## 1. TensorFlow and Keras Setup
+
+Day 5 introduced neural-network development using TensorFlow and Keras.
+
+Verified environment versions:
+
+| Framework | Version |
+|---|---:|
+| TensorFlow | 2.22.0-rc0 |
+| Keras | 3.15.1 |
+
+The oneDNN and CPU-instruction messages displayed during execution were informational messages, not training failures.
+
+## 2. MNIST Neural Network Demo
+
+A fully connected neural network was trained on the MNIST handwritten-digit dataset to demonstrate the basic ANN workflow before applying neural networks to customer churn.
+
+### Dataset
+
+| Split | Shape |
+|---|---:|
+| Training data | 60,000 x 28 x 28 |
+| Testing data | 10,000 x 28 x 28 |
+
+### Architecture
+
+```text
+Flatten: 28 x 28 -> 784
+Dense: 128 units
+Dense: 64 units
+Output: 10 units
+```
+
+The MNIST network contained 109,386 trainable parameters. Training stopped after 9 epochs, and the final test results were:
+
+| Metric | Result |
+|---|---:|
+| Test loss | 0.08127 |
+| Test accuracy | 97.76% |
+
+The first five test predictions were all correct:
+
+```text
+Actual:    7  2  1  0  4
+Predicted: 7  2  1  0  4
+```
+
+The MNIST model was saved successfully.
+
+## 3. Customer Churn ANN
+
+A neural network was then trained on the Telco Customer Churn dataset using the Day 4 engineered features and reusable preprocessing workflow.
+
+### Training Setup
+
+| Property | Value |
+|---|---:|
+| Training records | 5,634 |
+| Testing records | 1,409 |
+| Processed input features | 53 |
+| Trainable ANN parameters | 17,281 |
+
+The ANN used:
+
+- Dense hidden layers with ReLU activation.
+- A sigmoid output layer for binary classification.
+- Dropout for regularization.
+- Binary cross-entropy loss.
+- Adam optimization.
+- Early stopping based on validation performance.
+- Class weights to address the imbalanced target.
+
+Calculated class weights:
+
+| Class | Weight |
+|---|---:|
+| Non-churn | 0.6806 |
+| Churn | 1.8843 |
+
+### ANN Test Results
+
+| Metric | Day 5 ANN |
+|---|---:|
+| Accuracy | 73.17% |
+| Precision | 49.66% |
+| Recall | 78.88% |
+| F1 Score | 60.95% |
+| ROC-AUC | 83.64% |
+
+The ANN model and preprocessing objects were saved successfully.
+
+## 4. Day 4 XGBoost vs Day 5 ANN
+
+The Day 5 ANN was compared with the Day 4 XGBoost champion using the same holdout test set.
+
+| Metric | Day 4 XGBoost | Day 5 ANN |
+|---|---:|---:|
+| Accuracy | **75.73%** | 73.17% |
+| Precision | **52.87%** | 49.66% |
+| Recall | **78.88%** | **78.88%** |
+| F1 Score | **63.30%** | 60.95% |
+| ROC-AUC | **84.39%** | 83.64% |
+
+Both models achieved the same churn recall of 78.88%. XGBoost retained higher accuracy, precision, F1 score, and ROC-AUC, so the Day 4 XGBoost pipeline remained the overall churn champion.
+
+## 5. Saved Day 5 Artifacts
+
+```text
+models/churn_v5_ann.keras
+models/day5_preprocessing.joblib
+models/day5_training_history.npz
+models/day5_model_comparison.csv
+```
+
+## 6. Day 5 Conclusion
+
+Day 5 demonstrated the complete neural-network workflow on both image and tabular data. The MNIST ANN achieved 97.76% test accuracy, while the churn ANN matched the Day 4 champion's recall at 78.88%.
+
+The experiment showed that a more complex neural network does not automatically outperform a strong tree-based ensemble on a medium-sized tabular dataset. XGBoost therefore remains the current production candidate for churn prediction.
+
+---
+
 # Installation and Execution
 
 Run all commands from the project root directory:
@@ -694,6 +828,26 @@ Run this only after `models/churn_v4.joblib` has been created:
 python -m src.Day4_test_production_model
 ```
 
+## 15. Run the Day 5 MNIST Demo
+
+```bash
+python -m src.Day5_mnist_demo
+```
+
+## 16. Train the Day 5 Churn ANN
+
+```bash
+python -m src.Day5_train_ann
+```
+
+## 17. Compare the Day 4 and Day 5 Models
+
+Run this after the Day 5 ANN and its preprocessing objects have been saved:
+
+```bash
+python -m src.Day5_compare_models
+```
+
 > Use package-style execution with `python -m src.<module_name>` because the source files import modules through the `src` package.
 
 ---
@@ -706,6 +860,7 @@ python -m src.Day4_test_production_model
 | Day 2 | Decision Tree, Random Forest, and SVM comparison | Completed |
 | Day 3 | GridSearchCV, cross-validation, tuned champion selection, and learning-curve analysis | Completed |
 | Day 4 | Feature engineering, feature-selection experiment, ensemble training, and production verification | Completed |
+| Day 5 | MNIST ANN demo, churn ANN training, saved neural-network artifacts, and model comparison | Completed |
 
 ---
 
