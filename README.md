@@ -2,7 +2,7 @@
 
 An end-to-end machine learning project that predicts customer churn using customer demographics, account information, subscribed services, and billing details.
 
-The project follows a structured machine learning workflow covering exploratory data analysis, preprocessing, baseline training, model comparison, hyperparameter tuning, cross-validation, learning-curve analysis, feature engineering, feature selection, ensemble learning, production model verification, and neural-network experimentation.
+The project follows a structured machine learning workflow covering exploratory data analysis, preprocessing, baseline training, model comparison, hyperparameter tuning, cross-validation, learning-curve analysis, feature engineering, feature selection, ensemble learning, production model verification, neural-network experimentation, and an in-progress CNN image-classification module.
 
 ---
 
@@ -18,6 +18,7 @@ The project follows a structured machine learning workflow covering exploratory 
 - Evaluate feature selection using SelectKBest.
 - Handle class imbalance during ensemble training.
 - Build and evaluate artificial neural networks with TensorFlow and Keras.
+- Build a CNN-based fashion product image classifier.
 - Save and reload trained pipelines, preprocessing objects, and neural-network models.
 
 ---
@@ -31,7 +32,8 @@ The project follows a structured machine learning workflow covering exploratory 
 | NumPy | Numerical operations |
 | Scikit-learn | Preprocessing, model training, selection, tuning, and evaluation |
 | XGBoost | Gradient-boosted ensemble model |
-| TensorFlow and Keras | Neural-network development and training |
+| TensorFlow and Keras | ANN and CNN development and training |
+| Pillow | Image loading and validation |
 | Matplotlib | Learning-curve visualization |
 | Joblib | Model serialization |
 | Git and GitHub | Version control |
@@ -78,8 +80,11 @@ The dataset is imbalanced, with fewer customers leaving than staying. Recall is 
 RETAILMIND-AI-MAIN-doing/
 |
 |-- data/
-|   `-- raw/
-|       `-- WA_Fn-UseC_-Telco-Customer-Churn.csv
+|   |-- raw/
+|   |   `-- WA_Fn-UseC_-Telco-Customer-Churn.csv
+|   `-- fashion-product-images-small/        # Pending local dataset
+|       |-- styles.csv
+|       `-- images/
 |
 |-- notebooks/
 |   `-- churn_analysis.py
@@ -98,7 +103,11 @@ RETAILMIND-AI-MAIN-doing/
 |   |-- Day4_test_production_model.py
 |   |-- Day5_mnist_demo.py
 |   |-- Day5_train_ann.py
-|   `-- Day5_compare_models.py
+|   |-- Day5_compare_models.py
+|   |-- Day6_fashion_mnist.py
+|   |-- Day6_image_pipeline.py
+|   |-- Day6_train_cnn.py
+|   `-- Day6_evaluate_cnn.py
 |
 |-- models/
 |   |-- churn_pipeline.joblib
@@ -721,6 +730,97 @@ The experiment showed that a more complex neural network does not automatically 
 
 ---
 
+# Day 6 - CNN Image Classification
+
+## 1. Objective
+
+Day 6 introduces a computer-vision module that classifies fashion product images automatically. The planned workflow follows the project roadmap: first validate a CNN on Fashion-MNIST, then move to the real Fashion Product Images dataset, add image augmentation, train a CNN, evaluate it with a confusion matrix, and save the catalog classifier.
+
+## 2. Implemented Day 6 Files
+
+The following Day 6 modules have been added:
+
+| File | Purpose | Current status |
+|---|---|---|
+| `src/Day6_fashion_mnist.py` | Fashion-MNIST CNN prototype | Prepared, final output not yet documented |
+| `src/Day6_image_pipeline.py` | Metadata loading, image matching, splitting, TensorFlow datasets, and augmentation | Implemented but blocked by missing dataset |
+| `src/Day6_train_cnn.py` | Train the real fashion-product CNN | Pending dataset and pipeline success |
+| `src/Day6_evaluate_cnn.py` | Load and evaluate the trained CNN | Pending trained model |
+
+## 3. Required Dataset
+
+The real-image stage requires the Kaggle `paramaggarwal/fashion-product-images-small` dataset.
+
+Expected local structure:
+
+```text
+data/fashion-product-images-small/
+|-- styles.csv
+`-- images/
+    |-- <product-id>.jpg
+    `-- ...
+```
+
+`styles.csv` supplies product IDs and category labels, while `images/` contains the corresponding product photographs.
+
+## 4. Current Verified Blocker
+
+Running:
+
+```bash
+python -m src.Day6_image_pipeline
+```
+
+currently stops with a `FileNotFoundError` because this file is not present:
+
+```text
+data/fashion-product-images-small/styles.csv
+```
+
+This is a missing-data issue, not an import or TensorFlow installation issue. No Day 6 production CNN metrics or model artifact should be reported until the dataset is installed and the remaining scripts run successfully.
+
+## 5. Work Remaining
+
+Complete Day 6 in this order:
+
+1. Download the Fashion Product Images (Small) dataset.
+2. Extract `styles.csv` and `images/` into `data/fashion-product-images-small/`.
+3. Verify image IDs in `styles.csv` have matching `<id>.jpg` files.
+4. Run the Fashion-MNIST prototype and record its actual test accuracy.
+5. Run the image pipeline and verify train, validation, and test splits.
+6. Train the real-product CNN with augmentation and class weighting if needed.
+7. Evaluate the saved CNN using accuracy, a classification report, and a confusion matrix.
+8. Save and verify the final catalog classifier.
+9. Replace the pending README entries with actual results.
+
+## 6. Expected Day 6 Artifacts
+
+The exact filenames should follow the implemented scripts. Typical outputs expected after successful completion are:
+
+```text
+models/fashion_cnn.keras
+models/day6_training_history.npz
+models/day6_class_names.json
+models/day6_confusion_matrix.png
+models/day6_evaluation.csv
+```
+
+These artifacts are **not listed as completed project files yet** because successful creation has not been verified.
+
+## 7. Day 6 Status
+
+```text
+Fashion-MNIST CNN prototype          Prepared, results not yet recorded
+Real-image loading pipeline          Blocked by missing styles.csv and images/
+Real-product CNN training            Not run
+CNN evaluation and confusion matrix  Not run
+Saved catalog classifier             Not created or verified
+```
+
+**Overall status: Pending because the Fashion Product Images dataset is not installed locally.**
+
+---
+
 # Installation and Execution
 
 Run all commands from the project root directory:
@@ -758,10 +858,17 @@ python -m pip install -r requirements.txt
 
 ## 4. Dataset Setup
 
-Place the Kaggle dataset at:
+Place the Telco Customer Churn dataset at:
 
 ```text
 data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv
+```
+
+Day 6 additionally requires:
+
+```text
+data/fashion-product-images-small/styles.csv
+data/fashion-product-images-small/images/
 ```
 
 ## 5. Run Exploratory Data Analysis
@@ -848,6 +955,36 @@ Run this after the Day 5 ANN and its preprocessing objects have been saved:
 python -m src.Day5_compare_models
 ```
 
+## 18. Run the Day 6 Fashion-MNIST CNN
+
+```bash
+python -m src.Day6_fashion_mnist
+```
+
+## 19. Validate the Day 6 Image Pipeline
+
+Requires `data/fashion-product-images-small/styles.csv` and the corresponding `images/` directory:
+
+```bash
+python -m src.Day6_image_pipeline
+```
+
+## 20. Train the Day 6 Product CNN
+
+Run only after the image pipeline succeeds:
+
+```bash
+python -m src.Day6_train_cnn
+```
+
+## 21. Evaluate the Day 6 CNN
+
+Run only after the trained CNN model has been saved:
+
+```bash
+python -m src.Day6_evaluate_cnn
+```
+
 > Use package-style execution with `python -m src.<module_name>` because the source files import modules through the `src` package.
 
 ---
@@ -861,11 +998,13 @@ python -m src.Day5_compare_models
 | Day 3 | GridSearchCV, cross-validation, tuned champion selection, and learning-curve analysis | Completed |
 | Day 4 | Feature engineering, feature-selection experiment, ensemble training, and production verification | Completed |
 | Day 5 | MNIST ANN demo, churn ANN training, saved neural-network artifacts, and model comparison | Completed |
+| Day 6 | Fashion-MNIST CNN, real-image pipeline, CNN training, confusion-matrix evaluation, and saved catalog classifier | Pending, dataset required |
 
 ---
 
 ## Future Enhancements
 
+- Complete Day 6 after installing the Fashion Product Images (Small) dataset.
 - Analyze feature importance using XGBoost gain scores and SHAP values.
 - Optimize the classification threshold to balance recall and precision.
 - Perform additional XGBoost hyperparameter tuning.
