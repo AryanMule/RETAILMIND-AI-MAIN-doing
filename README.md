@@ -2,7 +2,7 @@
 
 An end-to-end machine learning project that predicts customer churn using customer demographics, account information, subscribed services, and billing details.
 
-The project follows a structured machine learning workflow covering exploratory data analysis, preprocessing, baseline training, model comparison, hyperparameter tuning, cross-validation, learning-curve analysis, feature engineering, feature selection, ensemble learning, production model verification, neural-network experimentation, and an in-progress CNN image-classification module.
+The project follows a structured workflow covering exploratory data analysis, preprocessing, baseline training, model comparison, hyperparameter tuning, cross-validation, learning-curve analysis, feature engineering, feature selection, ensemble learning, production model verification, neural-network experimentation, CNN image classification, and transfer learning with VGG16.
 
 ---
 
@@ -19,6 +19,8 @@ The project follows a structured machine learning workflow covering exploratory 
 - Handle class imbalance during ensemble training.
 - Build and evaluate artificial neural networks with TensorFlow and Keras.
 - Build a CNN-based fashion product image classifier.
+- Upgrade the image classifier using VGG16 transfer learning and fine-tuning.
+- Compare the Day 6 CNN with the Day 7 VGG16 classifier.
 - Save and reload trained pipelines, preprocessing objects, and neural-network models.
 
 ---
@@ -32,7 +34,8 @@ The project follows a structured machine learning workflow covering exploratory 
 | NumPy | Numerical operations |
 | Scikit-learn | Preprocessing, model training, selection, tuning, and evaluation |
 | XGBoost | Gradient-boosted ensemble model |
-| TensorFlow and Keras | ANN and CNN development and training |
+| TensorFlow and Keras | ANN, CNN, and transfer-learning development |
+| VGG16 | ImageNet-pretrained transfer-learning backbone |
 | Pillow | Image loading and validation |
 | Matplotlib | Learning-curve visualization |
 | Joblib | Model serialization |
@@ -60,8 +63,6 @@ The dataset contains customer information from a telecommunications company.
 
 ### Target Distribution
 
-The target variable is `Churn`:
-
 - `No` -> 0
 - `Yes` -> 1
 
@@ -71,6 +72,20 @@ The target variable is `Churn`:
 | Yes | 1,869 | 26.54% |
 
 The dataset is imbalanced, with fewer customers leaving than staying. Recall is therefore an important evaluation metric because identifying customers who may churn is a primary objective.
+
+### Computer-Vision Dataset
+
+Days 6 and 7 require the Kaggle `paramaggarwal/fashion-product-images-small` dataset.
+
+Expected local structure:
+
+```text
+data/fashion-product-images-small/
+|-- styles.csv
+`-- images/
+    |-- <product-id>.jpg
+    `-- ...
+```
 
 ---
 
@@ -82,7 +97,7 @@ RETAILMIND-AI-MAIN-doing/
 |-- data/
 |   |-- raw/
 |   |   `-- WA_Fn-UseC_-Telco-Customer-Churn.csv
-|   `-- fashion-product-images-small/        # Pending local dataset
+|   `-- fashion-product-images-small/        # Required for Days 6 and 7
 |       |-- styles.csv
 |       `-- images/
 |
@@ -107,20 +122,25 @@ RETAILMIND-AI-MAIN-doing/
 |   |-- Day6_fashion_mnist.py
 |   |-- Day6_image_pipeline.py
 |   |-- Day6_train_cnn.py
-|   `-- Day6_evaluate_cnn.py
+|   |-- Day6_evaluate_cnn.py
+|   `-- Day7_transfer_learning.py
 |
 |-- models/
 |   |-- churn_pipeline.joblib
 |   |-- churn_comparison_champion.joblib
 |   |-- churn_v3.joblib
 |   |-- churn_v4.joblib
+|   |-- churn_v5_ann.keras
 |   |-- day2_model_comparison.csv
 |   |-- day3_tuning_results.csv
 |   |-- day4_model_comparison.csv
-|   |-- churn_v5_ann.keras
 |   |-- day5_preprocessing.joblib
 |   |-- day5_training_history.npz
 |   |-- day5_model_comparison.csv
+|   |-- mnist_demo.keras
+|   |-- fashion_mnist_cnn.keras
+|   |-- fashion_cnn.keras                 # Expected after Day 6 completion
+|   |-- fashion_vgg16.keras               # Expected after Day 7 transfer learning
 |   `-- learning_curve.png
 |
 |-- README.md
@@ -128,7 +148,7 @@ RETAILMIND-AI-MAIN-doing/
 `-- .gitignore
 ```
 
-> The model files, result files, and learning-curve image are generated after their corresponding scripts run successfully.
+> Model files, result files, and visualizations are generated only after their corresponding scripts run successfully.
 
 ---
 
@@ -136,92 +156,35 @@ RETAILMIND-AI-MAIN-doing/
 
 ## 1. Exploratory Data Analysis
 
-The initial analysis examined:
+The initial analysis examined dataset dimensions, column types, missing values, duplicate records, feature distributions, and customer churn distribution.
 
-- Dataset dimensions and structure.
-- Numerical and categorical columns.
-- Missing values.
-- Duplicate records.
-- Customer churn distribution.
-- Data types and feature distributions.
-
-### Data Cleaning
-
-The `TotalCharges` column was initially stored as a string and was converted to a numerical column:
+`TotalCharges` was converted from text to a numeric column:
 
 ```python
-df["TotalCharges"] = pd.to_numeric(
-    df["TotalCharges"],
-    errors="coerce"
-)
+df["TotalCharges"] = pd.to_numeric(df["TotalCharges"], errors="coerce")
 ```
 
-This conversion identified 11 missing values. The `customerID` column was excluded from training because it is an identifier rather than a meaningful predictive feature.
+The conversion identified 11 missing values. The `customerID` column was excluded because it is an identifier rather than a predictive feature.
 
 ## 2. Data Preprocessing
 
-A reusable preprocessing pipeline was developed in `src/Day3_preprocessing.py` and reused by the training scripts.
-
-### Numerical Features
+Numerical features:
 
 - `SeniorCitizen`
 - `tenure`
 - `MonthlyCharges`
 - `TotalCharges`
 
-Operations:
+Numerical operations:
 
-1. Missing-value imputation using the median.
-2. Feature scaling using `StandardScaler`.
+1. Median missing-value imputation.
+2. StandardScaler feature scaling.
 
-### Categorical Features
+Categorical features were processed with most-frequent imputation and one-hot encoding.
 
-- `gender`
-- `Partner`
-- `Dependents`
-- `PhoneService`
-- `MultipleLines`
-- `InternetService`
-- `OnlineSecurity`
-- `OnlineBackup`
-- `DeviceProtection`
-- `TechSupport`
-- `StreamingTV`
-- `StreamingMovies`
-- `Contract`
-- `PaperlessBilling`
-- `PaymentMethod`
+The stratified split produced 5,634 training records and 1,409 testing records.
 
-Operations:
-
-1. Missing-value imputation using the most frequent value.
-2. One-hot encoding using `OneHotEncoder`.
-
-### Train-Test Split
-
-| Dataset | Records |
-|---|---:|
-| Training | 5,634 |
-| Testing | 1,409 |
-| Total | 7,043 |
-
-```python
-train_test_split(
-    X,
-    y,
-    test_size=0.2,
-    random_state=42,
-    stratify=y
-)
-```
-
-Stratification preserves approximately the same target-class distribution in both sets.
-
-## 3. Baseline Model - Logistic Regression
-
-A Logistic Regression classifier was trained using the shared preprocessing pipeline.
-
-### Evaluation Results
+## 3. Logistic Regression Baseline
 
 | Metric | Score |
 |---|---:|
@@ -230,61 +193,26 @@ A Logistic Regression classifier was trained using the shared preprocessing pipe
 | Recall | 55.88% |
 | ROC-AUC | 84.19% |
 
-### Confusion Matrix
+Confusion matrix:
 
 ```text
 [[926 109]
  [165 209]]
 ```
 
-The baseline model was saved as:
+Saved model:
 
 ```text
 models/churn_pipeline.joblib
 ```
 
-## 4. Prediction Pipeline
-
-A reusable prediction function was implemented in `src/Day1_predict.py`.
-
-The function:
-
-- Loads the saved baseline pipeline.
-- Accepts customer information.
-- Predicts whether the customer is likely to churn.
-- Returns the predicted class and churn probability.
-
-Example output:
-
-```text
-Model loaded successfully!
-
-========== CUSTOMER PREDICTION ==========
-{'prediction': 'Yes', 'churn_probability': 0.6801}
-```
-
-The predicted probability is a model estimate, not a guarantee of actual customer behaviour.
+`src/Day1_predict.py` reloads the baseline pipeline and returns the predicted churn class and probability.
 
 ---
 
 # Day 2 - Model Comparison
 
-## 1. Objective
-
-Day 2 evaluated multiple classification algorithms using the same training and testing datasets and the same reusable preprocessing strategy.
-
-Models compared:
-
-- Logistic Regression baseline from Day 1
-- Decision Tree
-- Random Forest
-- Support Vector Machine
-
-## 2. Model Evaluation
-
-The models were evaluated using accuracy, precision, recall, ROC-AUC, and confusion matrices.
-
-### Model Comparison
+Day 2 compared Logistic Regression, Decision Tree, Random Forest, and Support Vector Machine using the same preprocessing strategy and holdout dataset.
 
 | Model | Accuracy | Precision | Recall | ROC-AUC |
 |---|---:|---:|---:|---:|
@@ -293,11 +221,7 @@ The models were evaluated using accuracy, precision, recall, ROC-AUC, and confus
 | Random Forest | 77.79% | 60.34% | 47.59% | 81.62% |
 | SVM | 79.13% | 64.18% | 48.40% | 79.05% |
 
-## 3. Day 2 Champion Selection
-
-Among the three newly evaluated Day 2 algorithms, Decision Tree achieved the highest churn recall at 50.53% and was saved as the Day 2 comparison champion.
-
-Logistic Regression still remained stronger overall than the new Day 2 candidates, with 55.88% recall and 84.19% ROC-AUC.
+Among the three newly evaluated Day 2 algorithms, Decision Tree achieved the highest churn recall and was saved as the Day 2 comparison champion. Logistic Regression remained stronger overall.
 
 Saved artifacts:
 
@@ -310,115 +234,7 @@ models/day2_model_comparison.csv
 
 # Day 3 - Hyperparameter Tuning and Model Optimization
 
-## 1. Objective
-
-Day 3 focused on improving model performance through hyperparameter tuning and cross-validation.
-
-Main activities:
-
-- Defined hyperparameter grids.
-- Applied `GridSearchCV`.
-- Performed five-fold stratified cross-validation.
-- Compared training and validation recall.
-- Evaluated tuned models on the holdout test set.
-- Selected and saved a tuned champion model.
-- Analyzed bias and variance using a learning curve.
-
-## 2. GridSearchCV
-
-```python
-GridSearchCV(
-    estimator=pipeline,
-    param_grid=param_grid,
-    scoring="recall",
-    cv=5,
-    n_jobs=-1,
-    verbose=1,
-    return_train_score=True
-)
-```
-
-### Cross-Validation Strategy
-
-```python
-StratifiedKFold(
-    n_splits=5,
-    shuffle=True,
-    random_state=42
-)
-```
-
-Recall was selected as the main cross-validation score because detecting customers who may churn is the primary project objective.
-
-## 3. Hyperparameter Grids
-
-### Decision Tree
-
-```python
-{
-    "classifier__max_depth": [3, 5, 10, None],
-    "classifier__min_samples_split": [2, 10, 20],
-    "classifier__min_samples_leaf": [1, 5, 10]
-}
-```
-
-### Random Forest
-
-```python
-{
-    "classifier__n_estimators": [100, 200],
-    "classifier__max_depth": [5, 10, None],
-    "classifier__min_samples_leaf": [1, 5],
-    "classifier__max_features": ["sqrt"]
-}
-```
-
-### Support Vector Machine
-
-SVM used `CalibratedClassifierCV` with an underlying SVC estimator.
-
-```python
-{
-    "classifier__estimator__C": [0.1, 1, 10],
-    "classifier__estimator__kernel": ["linear", "rbf"],
-    "classifier__estimator__gamma": ["scale", "auto"]
-}
-```
-
-## 4. Best Hyperparameters
-
-### Decision Tree
-
-```python
-{
-    "classifier__max_depth": 5,
-    "classifier__min_samples_leaf": 10,
-    "classifier__min_samples_split": 2
-}
-```
-
-### Random Forest
-
-```python
-{
-    "classifier__max_depth": 10,
-    "classifier__max_features": "sqrt",
-    "classifier__min_samples_leaf": 5,
-    "classifier__n_estimators": 100
-}
-```
-
-### SVM
-
-```python
-{
-    "classifier__estimator__C": 0.1,
-    "classifier__estimator__gamma": "scale",
-    "classifier__estimator__kernel": "linear"
-}
-```
-
-## 5. Tuned Model Comparison
+Day 3 used GridSearchCV, five-fold StratifiedKFold cross-validation, recall-based scoring, training-versus-validation comparisons, holdout evaluation, and learning-curve analysis.
 
 | Model | Best CV Recall | Training CV Recall | Test Accuracy | Test Precision | Test Recall | Test ROC-AUC |
 |---|---:|---:|---:|---:|---:|---:|
@@ -426,135 +242,40 @@ SVM used `CalibratedClassifierCV` with an underlying SVC estimator.
 | Random Forest | **0.5157** | 0.6077 | **0.8084** | **0.6793** | 0.5267 | **0.8418** |
 | SVM | 0.5144 | 0.5189 | 0.7970 | 0.6467 | 0.5187 | 0.8287 |
 
-## 6. Training vs Validation Performance
-
-| Model | Training Recall | Validation Recall | Difference |
-|---|---:|---:|---:|
-| Decision Tree | 0.5530 | 0.5144 | 0.0386 |
-| Random Forest | 0.6077 | 0.5157 | 0.0920 |
-| SVM | 0.5189 | 0.5144 | 0.0045 |
-
-### Observations
-
-- Decision Tree showed a relatively small training-validation gap.
-- Random Forest showed the largest gap, suggesting possible overfitting.
-- SVM had almost identical training and validation recall, indicating consistent but modest performance.
-
-## 7. Tuned Champion Model
-
-Random Forest was selected as the Day 3 tuned champion because it achieved the highest cross-validation recall. It also achieved the highest test ROC-AUC among the tuned candidates.
-
-### Champion Results
-
-- Best CV Recall: 51.57%
-- Test Accuracy: 80.84%
-- Test Precision: 67.93%
-- Test Recall: 52.67%
-- Test ROC-AUC: 84.18%
+Random Forest was selected because it achieved the highest cross-validation recall and the highest test ROC-AUC among the tuned candidates.
 
 Saved artifacts:
 
 ```text
 models/churn_v3.joblib
 models/day3_tuning_results.csv
-```
-
-> Decision Tree achieved the highest holdout test recall at 56.68%, while Random Forest achieved the highest cross-validation recall and test ROC-AUC. Champion selection was based on cross-validation performance rather than one holdout metric.
-
-## 8. Learning Curve and Bias-Variance Analysis
-
-The learning curve compared training recall and validation recall as the training-set size increased.
-
-The analysis is implemented in:
-
-```text
-src/Day2_learning_analysis.py
-```
-
-### Learning-Curve Results
-
-| Training Size | Training Recall | Validation Recall | Gap |
-|---:|---:|---:|---:|
-| 450 | 0.6918 | 0.4963 | 0.1955 |
-| 1,352 | 0.6410 | 0.4809 | 0.1601 |
-| 2,253 | 0.6388 | 0.5124 | 0.1264 |
-| 3,154 | 0.6454 | 0.5351 | 0.1103 |
-| 4,507 | 0.6080 | 0.5151 | 0.0929 |
-
-The train-validation gap generally became smaller as more training data was used. Validation recall improved from 0.4963 at 450 samples to 0.5151 at 4,507 samples, although the scores fluctuated across training sizes. The final remaining gap suggests some variance is still present.
-
-Generated visualization:
-
-```text
 models/learning_curve.png
 ```
+
+The final learning-curve training-validation recall gap was 0.0929, indicating that some variance remained.
 
 ---
 
 # Day 4 - Feature Engineering and Ensemble Learning
 
-## 1. Feature Engineering
+## Feature Engineering
 
-A reusable Scikit-learn transformer named `CustomerFeatureEngineer` was implemented in `src/Day4_feature_engineering.py`.
+`CustomerFeatureEngineer` introduced six features:
 
-Six new features were created:
+- `tenure_group`
+- `avg_monthly_charge`
+- `num_services`
+- `is_month_to_month`
+- `has_support_service`
+- `has_online_service`
 
-| Feature | Description |
-|---|---|
-| `tenure_group` | Groups customers by tenure |
-| `avg_monthly_charge` | Calculates the average historical monthly charge |
-| `num_services` | Counts subscribed services |
-| `is_month_to_month` | Identifies month-to-month contracts |
-| `has_support_service` | Identifies support or security subscriptions |
-| `has_online_service` | Identifies internet subscribers |
+The input increased from 19 to 25 features. After preprocessing, 53 transformed features were available.
 
-The model input dataset increased from 19 features to 25 features after feature engineering.
+## Feature Selection
 
-## 2. Feature Selection
+SelectKBest with `f_classif` reduced the transformed features from 53 to 20. Because selection reduced recall and ROC-AUC, all 53 transformed features were retained.
 
-`SelectKBest` with `f_classif` was used to test whether reducing the transformed feature set improved model performance.
-
-| Property | Result |
-|---|---:|
-| Original transformed features | 53 |
-| Selected features | 20 |
-| Feature reduction | 62.26% |
-
-### Performance Comparison
-
-| Metric | Without Selection | With Selection |
-|---|---:|---:|
-| Accuracy | 79.91% | 80.06% |
-| Precision | 65.12% | 65.98% |
-| Recall | 52.41% | 51.34% |
-| ROC-AUC | 84.16% | 83.69% |
-
-Feature selection slightly improved accuracy and precision but reduced recall and ROC-AUC. Because churn detection prioritizes recall, all 53 transformed features were retained for ensemble training.
-
-## 3. Ensemble Learning
-
-Two ensemble algorithms were trained and compared:
-
-- Random Forest using bagging.
-- XGBoost using gradient boosting.
-
-Both models used the same train-test split, engineered features, and preprocessing pipeline.
-
-Class imbalance was addressed with:
-
-- `class_weight="balanced"` for Random Forest.
-- `scale_pos_weight` for XGBoost.
-
-Training class distribution:
-
-| Class | Records |
-|---|---:|
-| Non-churn | 4,139 |
-| Churn | 1,495 |
-
-The calculated XGBoost positive-class weight was approximately 2.77.
-
-### Ensemble Model Comparison
+## Ensemble Comparison
 
 | Metric | Random Forest | XGBoost |
 |---|---:|---:|
@@ -564,130 +285,29 @@ The calculated XGBoost positive-class weight was approximately 2.77.
 | F1 Score | **63.35%** | 63.30% |
 | ROC-AUC | 84.14% | **84.39%** |
 
-## 4. Day 4 Champion Model
+XGBoost was selected because churn recall was the primary metric and it achieved the higher recall and ROC-AUC.
 
-**Selected model: XGBoost**
-
-XGBoost was selected because churn recall is the project's primary metric, and XGBoost achieved the higher recall and ROC-AUC among the two Day 4 ensemble candidates.
-
-### Final Metrics
-
-- Accuracy: 75.73%
-- Precision: 52.87%
-- Recall: 78.88%
-- F1 Score: 63.30%
-- ROC-AUC: 84.39%
-
-The complete trained pipeline was saved as:
+Saved model:
 
 ```text
 models/churn_v4.joblib
 ```
 
-## 5. Production Model Verification
-
-The saved Day 4 pipeline was loaded independently and used to generate predictions for five customer records.
-
-| Customer | Prediction | Churn Probability |
-|---|---|---:|
-| 1 | No | 2.34% |
-| 2 | Yes | 93.30% |
-| 3 | No | 21.59% |
-| 4 | Yes | 54.68% |
-| 5 | No | 1.21% |
-
-The production verification completed successfully, confirming that the saved pipeline can reload and generate both churn predictions and probabilities.
-
-## 6. Day 4 Conclusion
-
-Day 4 introduced domain-based feature engineering, feature-selection experiments, class-imbalance handling, and ensemble learning.
-
-XGBoost achieved 78.88% churn recall, a substantial improvement over the earlier Day 1 to Day 3 models. The final Day 4 pipeline was saved and successfully reloaded for production-style predictions.
+The saved model was independently reloaded and verified on five customer records.
 
 ---
 
 # Day 5 - Neural Networks and Deep Learning
 
-## 1. TensorFlow and Keras Setup
+Day 5 introduced TensorFlow and Keras neural networks.
 
-Day 5 introduced neural-network development using TensorFlow and Keras.
+## MNIST ANN Demo
 
-Verified environment versions:
+The MNIST ANN contained 109,386 trainable parameters and achieved 97.76% test accuracy after early stopping.
 
-| Framework | Version |
-|---|---:|
-| TensorFlow | 2.22.0-rc0 |
-| Keras | 3.15.1 |
+## Customer Churn ANN
 
-The oneDNN and CPU-instruction messages displayed during execution were informational messages, not training failures.
-
-## 2. MNIST Neural Network Demo
-
-A fully connected neural network was trained on the MNIST handwritten-digit dataset to demonstrate the basic ANN workflow before applying neural networks to customer churn.
-
-### Dataset
-
-| Split | Shape |
-|---|---:|
-| Training data | 60,000 x 28 x 28 |
-| Testing data | 10,000 x 28 x 28 |
-
-### Architecture
-
-```text
-Flatten: 28 x 28 -> 784
-Dense: 128 units
-Dense: 64 units
-Output: 10 units
-```
-
-The MNIST network contained 109,386 trainable parameters. Training stopped after 9 epochs, and the final test results were:
-
-| Metric | Result |
-|---|---:|
-| Test loss | 0.08127 |
-| Test accuracy | 97.76% |
-
-The first five test predictions were all correct:
-
-```text
-Actual:    7  2  1  0  4
-Predicted: 7  2  1  0  4
-```
-
-The MNIST model was saved successfully.
-
-## 3. Customer Churn ANN
-
-A neural network was then trained on the Telco Customer Churn dataset using the Day 4 engineered features and reusable preprocessing workflow.
-
-### Training Setup
-
-| Property | Value |
-|---|---:|
-| Training records | 5,634 |
-| Testing records | 1,409 |
-| Processed input features | 53 |
-| Trainable ANN parameters | 17,281 |
-
-The ANN used:
-
-- Dense hidden layers with ReLU activation.
-- A sigmoid output layer for binary classification.
-- Dropout for regularization.
-- Binary cross-entropy loss.
-- Adam optimization.
-- Early stopping based on validation performance.
-- Class weights to address the imbalanced target.
-
-Calculated class weights:
-
-| Class | Weight |
-|---|---:|
-| Non-churn | 0.6806 |
-| Churn | 1.8843 |
-
-### ANN Test Results
+The churn ANN used 53 processed inputs, dense ReLU layers, dropout, sigmoid output, binary cross-entropy, Adam, early stopping, and class weights.
 
 | Metric | Day 5 ANN |
 |---|---:|
@@ -697,11 +317,7 @@ Calculated class weights:
 | F1 Score | 60.95% |
 | ROC-AUC | 83.64% |
 
-The ANN model and preprocessing objects were saved successfully.
-
-## 4. Day 4 XGBoost vs Day 5 ANN
-
-The Day 5 ANN was compared with the Day 4 XGBoost champion using the same holdout test set.
+## XGBoost vs ANN
 
 | Metric | Day 4 XGBoost | Day 5 ANN |
 |---|---:|---:|
@@ -711,91 +327,47 @@ The Day 5 ANN was compared with the Day 4 XGBoost champion using the same holdou
 | F1 Score | **63.30%** | 60.95% |
 | ROC-AUC | **84.39%** | 83.64% |
 
-Both models achieved the same churn recall of 78.88%. XGBoost retained higher accuracy, precision, F1 score, and ROC-AUC, so the Day 4 XGBoost pipeline remained the overall churn champion.
+XGBoost remained the overall churn champion.
 
-## 5. Saved Day 5 Artifacts
+Saved artifacts:
 
 ```text
 models/churn_v5_ann.keras
 models/day5_preprocessing.joblib
 models/day5_training_history.npz
 models/day5_model_comparison.csv
+models/mnist_demo.keras
 ```
-
-## 6. Day 5 Conclusion
-
-Day 5 demonstrated the complete neural-network workflow on both image and tabular data. The MNIST ANN achieved 97.76% test accuracy, while the churn ANN matched the Day 4 champion's recall at 78.88%.
-
-The experiment showed that a more complex neural network does not automatically outperform a strong tree-based ensemble on a medium-sized tabular dataset. XGBoost therefore remains the current production candidate for churn prediction.
 
 ---
 
 # Day 6 - CNN Image Classification
 
-## 1. Objective
+## Objective
 
-Day 6 introduces a computer-vision module that classifies fashion product images automatically. The planned workflow follows the project roadmap: first validate a CNN on Fashion-MNIST, then move to the real Fashion Product Images dataset, add image augmentation, train a CNN, evaluate it with a confusion matrix, and save the catalog classifier.
+Day 6 introduces a computer-vision module that classifies fashion product images. The workflow starts with a Fashion-MNIST CNN prototype and then moves to the real Fashion Product Images dataset with augmentation, CNN training, confusion-matrix evaluation, and model persistence.
 
-## 2. Implemented Day 6 Files
-
-The following Day 6 modules have been added:
+## Implemented Files
 
 | File | Purpose | Current status |
 |---|---|---|
-| `src/Day6_fashion_mnist.py` | Fashion-MNIST CNN prototype | Prepared, final output not yet documented |
+| `src/Day6_fashion_mnist.py` | Fashion-MNIST CNN prototype | Model artifact exists; final metric not documented |
 | `src/Day6_image_pipeline.py` | Metadata loading, image matching, splitting, TensorFlow datasets, and augmentation | Implemented but blocked by missing dataset |
 | `src/Day6_train_cnn.py` | Train the real fashion-product CNN | Pending dataset and pipeline success |
-| `src/Day6_evaluate_cnn.py` | Load and evaluate the trained CNN | Pending trained model |
+| `src/Day6_evaluate_cnn.py` | Load and evaluate the trained CNN | Pending trained real-product model |
 
-## 3. Required Dataset
+## Current Blocker
 
-The real-image stage requires the Kaggle `paramaggarwal/fashion-product-images-small` dataset.
-
-Expected local structure:
-
-```text
-data/fashion-product-images-small/
-|-- styles.csv
-`-- images/
-    |-- <product-id>.jpg
-    `-- ...
-```
-
-`styles.csv` supplies product IDs and category labels, while `images/` contains the corresponding product photographs.
-
-## 4. Current Verified Blocker
-
-Running:
-
-```bash
-python -m src.Day6_image_pipeline
-```
-
-currently stops with a `FileNotFoundError` because this file is not present:
+The real-image workflow requires:
 
 ```text
 data/fashion-product-images-small/styles.csv
+data/fashion-product-images-small/images/
 ```
 
-This is a missing-data issue, not an import or TensorFlow installation issue. No Day 6 production CNN metrics or model artifact should be reported until the dataset is installed and the remaining scripts run successfully.
+Until these are installed, no real-product CNN metrics or final catalog-classifier artifact should be reported.
 
-## 5. Work Remaining
-
-Complete Day 6 in this order:
-
-1. Download the Fashion Product Images (Small) dataset.
-2. Extract `styles.csv` and `images/` into `data/fashion-product-images-small/`.
-3. Verify image IDs in `styles.csv` have matching `<id>.jpg` files.
-4. Run the Fashion-MNIST prototype and record its actual test accuracy.
-5. Run the image pipeline and verify train, validation, and test splits.
-6. Train the real-product CNN with augmentation and class weighting if needed.
-7. Evaluate the saved CNN using accuracy, a classification report, and a confusion matrix.
-8. Save and verify the final catalog classifier.
-9. Replace the pending README entries with actual results.
-
-## 6. Expected Day 6 Artifacts
-
-The exact filenames should follow the implemented scripts. Typical outputs expected after successful completion are:
+## Expected Artifacts
 
 ```text
 models/fashion_cnn.keras
@@ -805,19 +377,146 @@ models/day6_confusion_matrix.png
 models/day6_evaluation.csv
 ```
 
-These artifacts are **not listed as completed project files yet** because successful creation has not been verified.
-
-## 7. Day 6 Status
+## Day 6 Status
 
 ```text
-Fashion-MNIST CNN prototype          Prepared, results not yet recorded
+Fashion-MNIST CNN prototype          Model artifact exists; metric not recorded
 Real-image loading pipeline          Blocked by missing styles.csv and images/
-Real-product CNN training            Not run
-CNN evaluation and confusion matrix  Not run
-Saved catalog classifier             Not created or verified
+Real-product CNN training            Not verified
+CNN evaluation and confusion matrix  Not verified
+Saved catalog classifier             Not verified
 ```
 
 **Overall status: Pending because the Fashion Product Images dataset is not installed locally.**
+
+---
+
+# Day 7 - Transfer Learning and Object Detection
+
+## 1. Objective
+
+Day 7 upgrades the Day 6 computer-vision module using transfer learning. An ImageNet-pretrained VGG16 network is adapted to classify the Fashion Product Images categories, fine-tuned on the project dataset, evaluated on the same test split, and compared with the Day 6 custom CNN.
+
+The complete Day 7 roadmap also includes YOLO-based product detection. The current implementation covers the VGG16 transfer-learning classifier only; object detection remains to be implemented separately.
+
+## 2. Implemented Day 7 File
+
+| File | Purpose | Current status |
+|---|---|---|
+| `src/Day7_transfer_learning.py` | Train and fine-tune a VGG16-based product classifier and compare it with the Day 6 CNN | Implemented; execution pending dataset and Day 6 model |
+| `src/Day7_yolo_detection.py` | Detect fashion products using YOLO bounding boxes and confidence scores | Not implemented |
+
+## 3. Transfer-Learning Workflow
+
+The Day 7 transfer-learning script performs the following steps:
+
+1. Loads `styles.csv` and matches product IDs with image files.
+2. Uses `masterCategory` as the classification target.
+3. Encodes category labels with `LabelEncoder`.
+4. Creates stratified training, validation, and test splits.
+5. Resizes images to `128 x 128` pixels.
+6. Applies VGG16 `preprocess_input` preprocessing.
+7. Loads VGG16 with ImageNet weights and excludes its original top classifier.
+8. Freezes the pretrained convolutional base.
+9. Adds global average pooling, a 128-unit ReLU layer, dropout, and a softmax output layer.
+10. Trains the new classification head.
+11. Unfreezes the top VGG16 layers and fine-tunes them using a lower learning rate.
+12. Evaluates the VGG16 model on the test dataset.
+13. Loads and evaluates the Day 6 CNN when `models/fashion_cnn.keras` exists.
+14. Compares Day 6 CNN accuracy with Day 7 VGG16 accuracy.
+15. Saves the upgraded model as `models/fashion_vgg16.keras`.
+
+## 4. VGG16 Architecture and Training
+
+```text
+Input image: 128 x 128 x 3
+Pretrained backbone: VGG16 with ImageNet weights
+Original VGG16 top: Removed
+Pooling: GlobalAveragePooling2D
+Dense layer: 128 units with ReLU
+Regularization: Dropout 0.4
+Output: Softmax with one unit per product category
+```
+
+Initial classification-head training uses:
+
+```text
+Optimizer: Adam
+Loss: sparse_categorical_crossentropy
+Epochs: 5 maximum
+Early stopping patience: 2
+```
+
+Fine-tuning uses:
+
+```text
+Unfrozen area: Top four VGG16 layers
+Optimizer: Adam
+Learning rate: 0.00001
+Epochs: 3 maximum
+Early stopping patience: 2
+```
+
+## 5. Day 6 Comparison Dependency
+
+The comparison requires the real-product Day 6 CNN:
+
+```text
+models/fashion_cnn.keras
+```
+
+The Fashion-MNIST prototype model below is not a substitute because it was trained on a different dataset:
+
+```text
+models/fashion_mnist_cnn.keras
+```
+
+Both models must use the same test images, target categories, and class-to-index mapping for the comparison to be valid.
+
+## 6. Current Blockers and Verification Requirements
+
+Day 7 cannot be marked complete until the following are verified:
+
+- The Fashion Product Images dataset is installed.
+- The Day 6 image pipeline runs successfully.
+- The Day 6 real-product CNN is trained and saved.
+- Day 6 and Day 7 use the same category mapping.
+- The VGG16 script runs successfully.
+- Actual VGG16 test accuracy is recorded.
+- Actual Day 6-versus-Day 7 comparison results are recorded.
+- The saved VGG16 model reloads successfully.
+- The YOLO object-detection portion is implemented and verified.
+
+## 7. Expected Day 7 Artifacts
+
+```text
+models/fashion_vgg16.keras
+models/day7_class_names.json
+models/day7_training_history.npz
+models/day7_model_comparison.csv
+```
+
+The following object-detection outputs may be added after YOLO is implemented:
+
+```text
+models/day7_yolo_predictions/
+models/day7_detection_results.csv
+```
+
+These artifacts must not be reported as completed until their creation has been verified.
+
+## 8. Day 7 Status
+
+```text
+VGG16 transfer-learning code         Implemented
+Classification-head training         Not yet run successfully
+VGG16 fine-tuning                     Not yet run successfully
+Day 6 CNN comparison                  Pending Day 6 real-product model
+Saved VGG16 classifier                Not yet verified
+YOLO object detection                 Not implemented
+```
+
+**Overall status: In progress. The transfer-learning code is prepared, but execution depends on completing Day 6 and installing the real image dataset. YOLO is still pending.**
 
 ---
 
@@ -829,161 +528,56 @@ Run all commands from the project root directory:
 RETAILMIND-AI-MAIN-doing>
 ```
 
-## 1. Clone the Repository
-
-```bash
-git clone <repository-url>
-cd RETAILMIND-AI-MAIN-doing
-```
-
-Replace `<repository-url>` with the actual GitHub repository URL.
-
-## 2. Create a Virtual Environment
+## 1. Create and Activate a Virtual Environment
 
 ```bash
 python -m venv .venv
 ```
 
-Activate it on Windows PowerShell:
+Windows PowerShell:
 
 ```powershell
 .venv\Scripts\Activate.ps1
 ```
 
-## 3. Install Dependencies
+## 2. Install Dependencies
 
 ```bash
 python -m pip install -r requirements.txt
 ```
 
-## 4. Dataset Setup
-
-Place the Telco Customer Churn dataset at:
+## 3. Dataset Setup
 
 ```text
 data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv
-```
-
-Day 6 additionally requires:
-
-```text
 data/fashion-product-images-small/styles.csv
 data/fashion-product-images-small/images/
 ```
 
-## 5. Run Exploratory Data Analysis
+## 4. Run Project Modules
 
 ```bash
 python notebooks/churn_analysis.py
-```
-
-## 6. Run Day 1 Baseline Training
-
-```bash
 python -m src.Day1_train
-```
-
-## 7. Run Day 1 Prediction
-
-```bash
 python -m src.Day1_predict
-```
-
-## 8. Run Day 2 Model Comparison
-
-```bash
 python -m src.Day2_compare_models
-```
-
-## 9. Run Day 3 Hyperparameter Tuning
-
-```bash
 python -m src.Day3_tune_models
-```
-
-## 10. Run Learning-Curve Analysis
-
-Run this after Day 3 tuning because the script loads `models/churn_v3.joblib`:
-
-```bash
 python -m src.Day2_learning_analysis
-```
-
-## 11. Run Day 4 Feature Engineering Test
-
-```bash
 python -m src.Day4_feature_engineering
-```
-
-## 12. Run Day 4 Feature Selection
-
-```bash
 python -m src.Day4_feature_selection
-```
-
-## 13. Train Day 4 Ensemble Models
-
-```bash
 python -m src.Day4_train_ensembles
-```
-
-## 14. Verify the Day 4 Production Model
-
-Run this only after `models/churn_v4.joblib` has been created:
-
-```bash
 python -m src.Day4_test_production_model
-```
-
-## 15. Run the Day 5 MNIST Demo
-
-```bash
 python -m src.Day5_mnist_demo
-```
-
-## 16. Train the Day 5 Churn ANN
-
-```bash
 python -m src.Day5_train_ann
-```
-
-## 17. Compare the Day 4 and Day 5 Models
-
-Run this after the Day 5 ANN and its preprocessing objects have been saved:
-
-```bash
 python -m src.Day5_compare_models
-```
-
-## 18. Run the Day 6 Fashion-MNIST CNN
-
-```bash
 python -m src.Day6_fashion_mnist
-```
-
-## 19. Validate the Day 6 Image Pipeline
-
-Requires `data/fashion-product-images-small/styles.csv` and the corresponding `images/` directory:
-
-```bash
 python -m src.Day6_image_pipeline
-```
-
-## 20. Train the Day 6 Product CNN
-
-Run only after the image pipeline succeeds:
-
-```bash
 python -m src.Day6_train_cnn
-```
-
-## 21. Evaluate the Day 6 CNN
-
-Run only after the trained CNN model has been saved:
-
-```bash
 python -m src.Day6_evaluate_cnn
+python -m src.Day7_transfer_learning
 ```
+
+Run Day 7 only after the Fashion Product Images dataset is installed. A valid Day 6 comparison additionally requires `models/fashion_cnn.keras`.
 
 > Use package-style execution with `python -m src.<module_name>` because the source files import modules through the `src` package.
 
@@ -998,20 +592,20 @@ python -m src.Day6_evaluate_cnn
 | Day 3 | GridSearchCV, cross-validation, tuned champion selection, and learning-curve analysis | Completed |
 | Day 4 | Feature engineering, feature-selection experiment, ensemble training, and production verification | Completed |
 | Day 5 | MNIST ANN demo, churn ANN training, saved neural-network artifacts, and model comparison | Completed |
-| Day 6 | Fashion-MNIST CNN, real-image pipeline, CNN training, confusion-matrix evaluation, and saved catalog classifier | Pending, dataset required |
+| Day 6 | Fashion-MNIST CNN, real-image pipeline, CNN training, confusion-matrix evaluation, and catalog classifier | Pending, dataset required |
+| Day 7 | VGG16 transfer learning, fine-tuning, Day 6 comparison, and YOLO product detection | In progress; transfer-learning code added, execution and YOLO pending |
 
 ---
 
-## Future Enhancements
+## Upcoming Roadmap
 
-- Complete Day 6 after installing the Fashion Product Images (Small) dataset.
-- Analyze feature importance using XGBoost gain scores and SHAP values.
-- Optimize the classification threshold to balance recall and precision.
-- Perform additional XGBoost hyperparameter tuning.
-- Add automated unit tests for preprocessing and feature engineering.
-- Build a REST API using FastAPI.
-- Develop a customer churn prediction dashboard.
-- Monitor model performance and data drift after deployment.
+- Complete Day 6 after installing the Fashion Product Images Small dataset.
+- Execute and verify the Day 7 VGG16 transfer-learning classifier.
+- Implement the Day 7 YOLO object-detection module.
+- Continue with later roadmap items only after the current day is complete.
+- Add automated unit tests during the MLOps stage.
+- Build the FastAPI inference service during the API stage.
+- Add model monitoring and drift detection during the monitoring stage.
 
 ---
 
