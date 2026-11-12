@@ -2,7 +2,7 @@
 
 An end-to-end machine learning project that predicts customer churn using customer demographics, account information, subscribed services, and billing details.
 
-The project follows a structured workflow covering exploratory data analysis, preprocessing, baseline training, model comparison, hyperparameter tuning, cross-validation, learning-curve analysis, feature engineering, feature selection, ensemble learning, production model verification, neural-network experimentation, CNN image classification, and transfer learning with VGG16.
+The project follows a structured workflow covering exploratory data analysis, preprocessing, baseline training, model comparison, hyperparameter tuning, cross-validation, learning-curve analysis, feature engineering, feature selection, ensemble learning, production model verification, neural-network experimentation, CNN image classification, transfer learning with VGG16, Grad-CAM explainability, weakly supervised product segmentation, background removal, and catalog-image generation.
 
 ---
 
@@ -21,6 +21,10 @@ The project follows a structured workflow covering exploratory data analysis, pr
 - Build a CNN-based fashion product image classifier.
 - Upgrade the image classifier using VGG16 transfer learning and fine-tuning.
 - Compare the Day 6 CNN with the Day 7 VGG16 classifier.
+- Explain image-classification predictions using Grad-CAM.
+- Estimate product foreground masks using Grad-CAM and OpenCV GrabCut.
+- Generate transparent-background and white-background catalog images.
+- Localize the main product using a mask-derived bounding box.
 - Save and reload trained pipelines, preprocessing objects, and neural-network models.
 
 ---
@@ -36,6 +40,8 @@ The project follows a structured workflow covering exploratory data analysis, pr
 | XGBoost | Gradient-boosted ensemble model |
 | TensorFlow and Keras | ANN, CNN, and transfer-learning development |
 | VGG16 | ImageNet-pretrained transfer-learning backbone |
+| OpenCV | Image loading, mask refinement, background removal, and output generation |
+| Grad-CAM | Visual explanation of VGG16 classification decisions |
 | Pillow | Image loading and validation |
 | Matplotlib | Learning-curve visualization |
 | Joblib | Model serialization |
@@ -75,7 +81,7 @@ The dataset is imbalanced, with fewer customers leaving than staying. Recall is 
 
 ### Computer-Vision Dataset
 
-Days 6 and 7 require the Kaggle `paramaggarwal/fashion-product-images-small` dataset.
+Days 6, 7, and 8 require the Kaggle `paramaggarwal/fashion-product-images-small` dataset.
 
 Expected local structure:
 
@@ -123,7 +129,11 @@ RETAILMIND-AI-MAIN-doing/
 |   |-- Day6_image_pipeline.py
 |   |-- Day6_train_cnn.py
 |   |-- Day6_evaluate_cnn.py
-|   `-- Day7_transfer_learning.py
+|   |-- Day7_transfer_learning.py
+|   `-- Day8_segmentation_gradcam.py
+|
+|-- outputs/
+|   `-- day8/                          # Generated Day 8 images and prediction JSON
 |
 |-- models/
 |   |-- churn_pipeline.joblib
@@ -520,6 +530,233 @@ YOLO object detection                 Not implemented
 
 ---
 
+# Day 8 - Segmentation and End-to-End Computer Vision
+
+## Objective
+
+Extend the RetailMind AI computer-vision pipeline by adding product segmentation, background removal, clean catalog-image generation, Grad-CAM explainability, and product localization.
+
+Day 8 builds on the VGG16 transfer-learning model developed on Day 7 and creates a more complete and explainable computer-vision workflow.
+
+---
+
+## Dataset
+
+**Dataset:** Fashion Product Images Small
+
+**Source:** Kaggle - Fashion Product Images Small
+
+The dataset contains:
+
+- Product images stored inside the `images/` directory.
+- `styles.csv` containing product metadata.
+- Product categories available through the `masterCategory` column.
+
+The dataset does not contain pixel-level segmentation masks or ground-truth bounding-box annotations.
+
+---
+
+## Technologies and Libraries
+
+- Python
+- TensorFlow / Keras
+- VGG16
+- OpenCV
+- NumPy
+- Grad-CAM
+
+---
+
+## Implementation
+
+The complete Day 8 implementation is available in:
+
+```text
+src/Day8_segmentation_gradcam.py
+```
+
+The pipeline integrates the Day 7 VGG16 classification model with segmentation, background removal, explainability, and product localization.
+
+---
+
+## 1. Day 7 Model Integration
+
+Day 8 reuses the transfer-learning model trained on Day 7:
+
+```text
+models/fashion_vgg16.keras
+```
+
+The same input configuration used during Day 7 is maintained:
+
+- Image size: `128 x 128`
+- VGG16 preprocessing using `preprocess_input`
+- Target variable: `masterCategory`
+
+Using the same preprocessing during training and prediction ensures consistency between Day 7 and Day 8.
+
+---
+
+## 2. Product Classification
+
+The saved VGG16 model is used to classify the input product image.
+
+The pipeline:
+
+1. Loads the product image using OpenCV.
+2. Converts the image from BGR to RGB.
+3. Resizes the image to `128 x 128`.
+4. Applies VGG16 `preprocess_input`.
+5. Passes the image through the saved Day 7 model.
+6. Selects the class having the highest predicted probability.
+
+The pipeline returns:
+
+- Predicted class index
+- Predicted `masterCategory`
+- Prediction confidence
+
+---
+
+## 3. Grad-CAM Explainability
+
+Grad-CAM was added to make the VGG16 classification result more explainable.
+
+Grad-CAM uses the final convolutional layer of VGG16:
+
+```text
+block5_conv3
+```
+
+The process calculates the gradients of the predicted class with respect to the convolutional feature maps. These gradients identify the image regions that contributed most strongly to the model prediction.
+
+Typical interpretation:
+
+- Red and yellow regions indicate stronger influence on the prediction.
+- Blue regions indicate lower influence on the prediction.
+
+A Grad-CAM overlay is generated by placing the heatmap over the original product image.
+
+---
+
+## 4. Product Segmentation
+
+The Grad-CAM heatmap is used to estimate the important foreground region of the product image.
+
+```text
+Input Image
+    |
+    v
+VGG16 Classification
+    |
+    v
+Grad-CAM Heatmap
+    |
+    v
+Initial Binary Mask
+    |
+    v
+OpenCV GrabCut Refinement
+    |
+    v
+Final Product Mask
+```
+
+This is a weakly supervised segmentation approach. VGG16 performs image classification, while Grad-CAM estimates the important region and OpenCV GrabCut refines it into a foreground mask. It is not a separately trained semantic-segmentation model.
+
+---
+
+## 5. Background Removal and Catalog Image
+
+The final product mask is used to create:
+
+- A transparent-background PNG where the mask becomes the alpha channel.
+- A clean catalog image with the product placed on a uniform white background.
+
+The pipeline also keeps the largest connected foreground component to reduce small noisy regions.
+
+---
+
+## 6. Product Localization
+
+A bounding rectangle is calculated from the final segmentation mask. The output image displays:
+
+- Product bounding box
+- Predicted category
+- Prediction confidence
+
+The bounding box is derived from the segmentation mask. It is not a YOLO-predicted detection box.
+
+---
+
+## 7. Generated Outputs
+
+For every processed image, Day 8 creates a separate folder under:
+
+```text
+outputs/day8/<image-name>/
+```
+
+Expected generated files:
+
+```text
+01_original.jpg
+02_gradcam_heatmap.jpg
+03_gradcam_overlay.jpg
+04_initial_mask.png
+05_final_mask.png
+06_transparent_product.png
+07_clean_catalog.jpg
+08_detected_product.jpg
+prediction.json
+```
+
+The JSON file stores the predicted class, confidence, bounding-box coordinates, model path, Grad-CAM layer, and segmentation method.
+
+---
+
+## 8. Day 8 Execution
+
+Run with the default dataset image:
+
+```bash
+python -m src.Day8_segmentation_gradcam
+```
+
+Run with a custom image:
+
+```bash
+python -m src.Day8_segmentation_gradcam data/test_product.jpg
+```
+
+Day 8 requires:
+
+```text
+data/fashion-product-images-small/styles.csv
+data/fashion-product-images-small/images/
+models/fashion_vgg16.keras
+```
+
+---
+
+## 9. Day 8 Status
+
+```text
+Day 8 pipeline code                 Implemented
+VGG16 model integration             Implemented
+Grad-CAM explainability             Implemented
+Weakly supervised segmentation      Implemented
+Background removal                  Implemented
+White catalog-image generation      Implemented
+Mask-derived bounding box           Implemented
+Successful end-to-end execution     Not yet verified
+Output quality review               Not yet verified
+```
+
+**Overall status: In progress. The Day 8 code is implemented, but successful execution depends on the verified Day 7 VGG16 model and the Fashion Product Images dataset.**
+
+---
+
 # Installation and Execution
 
 Run all commands from the project root directory:
@@ -594,6 +831,7 @@ Run Day 7 only after the Fashion Product Images dataset is installed. A valid Da
 | Day 5 | MNIST ANN demo, churn ANN training, saved neural-network artifacts, and model comparison | Completed |
 | Day 6 | Fashion-MNIST CNN, real-image pipeline, CNN training, confusion-matrix evaluation, and catalog classifier | Pending, dataset required |
 | Day 7 | VGG16 transfer learning, fine-tuning, Day 6 comparison, and YOLO product detection | In progress; transfer-learning code added, execution and YOLO pending |
+| Day 8 | Grad-CAM, weak segmentation, background removal, catalog-image generation, and localization | In progress; code added, execution pending Day 7 model |
 
 ---
 
@@ -602,6 +840,8 @@ Run Day 7 only after the Fashion Product Images dataset is installed. A valid Da
 - Complete Day 6 after installing the Fashion Product Images Small dataset.
 - Execute and verify the Day 7 VGG16 transfer-learning classifier.
 - Implement the Day 7 YOLO object-detection module.
+- Execute and verify the Day 8 segmentation and Grad-CAM pipeline.
+- Inspect generated masks, transparent products, catalog images, and bounding boxes.
 - Continue with later roadmap items only after the current day is complete.
 - Add automated unit tests during the MLOps stage.
 - Build the FastAPI inference service during the API stage.
