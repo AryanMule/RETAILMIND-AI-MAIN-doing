@@ -2,7 +2,7 @@
 
 An end-to-end machine learning project that predicts customer churn using customer demographics, account information, subscribed services, and billing details.
 
-The project follows a structured workflow covering exploratory data analysis, preprocessing, baseline training, model comparison, hyperparameter tuning, cross-validation, learning-curve analysis, feature engineering, feature selection, ensemble learning, production model verification, neural-network experimentation, CNN image classification, transfer learning with VGG16, Grad-CAM explainability, weakly supervised product segmentation, background removal, catalog-image generation, and LSTM-based product demand forecasting.
+The project follows a structured workflow covering exploratory data analysis, preprocessing, baseline training, model comparison, hyperparameter tuning, cross-validation, learning-curve analysis, feature engineering, feature selection, ensemble learning, production model verification, neural-network experimentation, CNN image classification, transfer learning with VGG16, Grad-CAM explainability, weakly supervised product segmentation, background removal, catalog-image generation, LSTM-based product demand forecasting.
 
 ---
 
@@ -30,6 +30,9 @@ The project follows a structured workflow covering exploratory data analysis, pr
 - Train an LSTM model for store-product demand forecasting.
 - Evaluate demand forecasts using MAE and RMSE.
 - Generate demand predictions that can later support inventory planning.
+- Extend demand forecasting from next-period prediction to a 14-day multi-step Seq2Seq forecast.
+- Use Attention to connect future forecast steps with relevant historical sales timesteps.
+- Generate multi-period demand forecasts for procurement and inventory planning.
 - Save and reload trained pipelines, preprocessing objects, and neural-network models.
 
 ---
@@ -45,6 +48,8 @@ The project follows a structured workflow covering exploratory data analysis, pr
 | XGBoost | Gradient-boosted ensemble model |
 | TensorFlow and Keras | ANN, CNN, transfer-learning, and LSTM development |
 | LSTM | Sequential demand forecasting from historical sales |
+| Seq2Seq | Encoder-decoder multi-step demand forecasting |
+| Attention | Historical-timestep weighting for multi-step forecasts |
 | VGG16 | ImageNet-pretrained transfer-learning backbone |
 | OpenCV | Image loading, mask refinement, background removal, and output generation |
 | Grad-CAM | Visual explanation of VGG16 classification decisions |
@@ -101,7 +106,7 @@ data/fashion-product-images-small/
 
 ### Demand Forecasting Dataset
 
-Day 9 introduces a historical store-item sales dataset for demand forecasting.
+Days 9 and 10 use the historical store-item sales dataset for demand forecasting. Day 9 performs next-period forecasting, while Day 10 reuses the same dataset for multi-step Seq2Seq forecasting.
 
 Expected input file:
 
@@ -166,11 +171,13 @@ RETAILMIND-AI-MAIN-doing/
 |   |-- Day6_evaluate_cnn.py
 |   |-- Day7_transfer_learning.py
 |   |-- Day8_segmentation_gradcam.py
-|   `-- Day9_demand_forecasting.py
+|   |-- Day9_demand_forecasting.py
+|   `-- Day10_seq2seq_attention.py
 |
 |-- outputs/
 |   |-- day8/                                # Day 8 images and prediction JSON
-|   `-- day9/                                # Day 9 predictions and forecast plot
+|   |-- day9/                                # Day 9 predictions and forecast plot
+|   `-- day10/                               # Day 10 forecast and attention outputs
 |
 |-- models/
 |   |-- churn_pipeline.joblib
@@ -190,6 +197,8 @@ RETAILMIND-AI-MAIN-doing/
 |   |-- fashion_vgg16.keras                 # Expected after Day 7 completion
 |   |-- demand_forecaster.keras             # Expected after Day 9 execution
 |   |-- day9_sales_scaler.joblib            # Recommended Day 9 scaler artifact
+|   |-- day10_seq2seq_attention.keras       # Expected after Day 10 execution
+|   |-- day10_sales_scaler.joblib           # Recommended Day 10 scaler artifact
 |   `-- learning_curve.png
 |
 |-- README.md
@@ -690,7 +699,138 @@ Actual MAE and RMSE                   Not yet recorded
 
 **Overall status: In progress. The Day 9 LSTM demand-forecasting workflow is implemented, but successful execution and actual MAE/RMSE results still need verification.**
 
+
 ---
+
+# Day 10 – Seq2Seq & Attention Forecasting
+
+## Objective
+
+Extend the Day 9 LSTM demand forecasting module to multi-step forecasting using a Sequence-to-Sequence (Seq2Seq) model with Attention.
+
+The objective is to predict multiple future demand values together and provide a longer forecasting horizon for inventory and procurement planning.
+
+Day 9 predicts the next demand value, while Day 10 predicts several future demand values from the same historical sales sequence.
+
+---
+
+## Dataset
+
+**Dataset:** Store Item Demand Forecasting Challenge
+
+**Source:** Kaggle – Store Item Demand Forecasting Challenge
+
+Day 10 reuses the same sales dataset used in Day 9.
+
+The dataset is stored at:
+
+```text
+data/train.csv
+```
+
+
+## Implementation
+
+The Day 10 implementation is maintained in:
+
+```text
+src/Day10_seq2seq_attention.py
+```
+
+The forecasting workflow extends Day 9 from a single next-period output to a 14-day output sequence:
+
+```text
+Previous 30 Days of Sales
+           |
+           v
+      LSTM Encoder
+           |
+           +-------------------+
+           |                   |
+           v                   v
+Encoder Sequence Outputs   Final Hidden/Cell States
+           |                   |
+           |              LSTM Decoder
+           |                   |
+           +---- Attention ----+
+                    |
+                    v
+             Next 14 Days
+```
+
+## Seq2Seq Architecture
+
+```text
+Encoder input: 30 historical days x 1 sales feature
+Encoder LSTM: 64 units
+Decoder horizon: 14 future days
+Decoder LSTM: 64 units
+Attention: Decoder states attend over encoder sequence outputs
+Output: Dense(1) for each of the 14 future timesteps
+Optimizer: Adam
+Loss: Mean Squared Error
+Metric: Mean Absolute Error
+```
+
+## Evaluation and Visualization
+
+Day 10 evaluates the 14-day forecast using MAE and RMSE and compares predicted demand with actual sales.
+
+| Metric | Result |
+|---|---|
+| MAE | Pending execution |
+| RMSE | Pending execution |
+
+The implementation also creates an Attention heatmap. The intended attention-score layout is:
+
+```text
+Rows: 14 forecast days
+Columns: 30 historical days
+```
+
+Expected outputs:
+
+```text
+outputs/day10/day10_forecast.png
+outputs/day10/day10_attention_weights.png
+outputs/day10/day10_multiweek_forecast.csv
+```
+
+## Expected Day 10 Artifacts
+
+```text
+models/day10_seq2seq_attention.keras
+models/day10_sales_scaler.joblib
+outputs/day10/day10_forecast.png
+outputs/day10/day10_attention_weights.png
+outputs/day10/day10_multiweek_forecast.csv
+```
+
+## Day 9 vs Day 10
+
+```text
+Day 9:  30 historical days -> LSTM -> next 1 day
+Day 10: 30 historical days -> Seq2Seq + Attention -> next 14 days
+```
+
+The longer forecasting horizon is intended to support short-term procurement and inventory planning.
+
+## Day 10 Status
+
+```text
+Seq2Seq encoder-decoder code         Implemented
+Attention mechanism                  Implemented
+14-day multi-step output             Implemented
+MAE/RMSE evaluation                  Implemented
+Forecast visualization               Implemented
+Attention heatmap                    Implemented
+Procurement forecast export          Implemented
+Leakage-safe train/test split         Needs correction before final verification
+Successful end-to-end execution      Not yet verified
+Actual MAE and RMSE                   Not yet recorded
+```
+
+**Overall status: In progress. The Day 10 model structure is implemented, but the sequence split should be corrected so held-out target values cannot enter training before final execution and verification.**
 
 # Installation and Execution
 
@@ -750,6 +890,7 @@ python -m src.Day6_evaluate_cnn
 python -m src.Day7_transfer_learning
 python -m src.Day8_segmentation_gradcam
 python -m src.Day9_demand_forecasting
+python -m src.Day10_seq2seq_attention
 ```
 
 > Use package-style execution with `python -m src.<module_name>` because the source files import modules through the `src` package.
@@ -769,6 +910,7 @@ python -m src.Day9_demand_forecasting
 | Day 7 | VGG16 transfer learning, fine-tuning, Day 6 comparison, and YOLO product detection | In progress; transfer-learning code added, execution and YOLO pending |
 | Day 8 | Grad-CAM, weak segmentation, background removal, catalog-image generation, and localization | In progress; code added, execution pending Day 7 model |
 | Day 9 | LSTM store-item demand forecasting, MAE/RMSE evaluation, and demand visualization | In progress; code added, execution and metrics pending |
+| Day 10 | Seq2Seq 14-day demand forecasting with Attention and attention visualization | In progress; code added, sequence-split correction and execution pending |
 
 ---
 
@@ -783,6 +925,10 @@ python -m src.Day9_demand_forecasting
 - Record the actual Day 9 MAE and RMSE.
 - Verify the predicted-versus-actual demand visualization.
 - Verify the saved demand forecaster and scaler.
+- Correct and verify the Day 10 train/test sequence split.
+- Execute the Day 10 Seq2Seq and Attention forecasting pipeline.
+- Record Day 10 MAE and RMSE and verify the attention heatmap.
+- Verify the Day 10 multi-period procurement forecast and saved model artifacts.
 - Continue with later roadmap items only after the current day is complete.
 - Add automated unit tests during the MLOps stage.
 - Build the FastAPI inference service during the API stage.
